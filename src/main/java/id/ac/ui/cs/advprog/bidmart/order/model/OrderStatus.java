@@ -1,6 +1,6 @@
 package id.ac.ui.cs.advprog.bidmart.order.model;
 
-public enum BookingStatus {
+public enum OrderStatus {
     CREATED,
     PACKAGED,
     SHIPPED,

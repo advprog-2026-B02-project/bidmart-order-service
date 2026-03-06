@@ -6,7 +6,7 @@ import id.ac.ui.cs.advprog.bidmart.order.dto.CreateOrder;
 
 import java.util.UUID;
 
-public interface BookingService {
+public interface OrderService {
 
     OrderListResponse getOrders(UUID userId, String role, String status, int page, int size);
     OrderResponse getOrderById(UUID orderId, UUID userId);

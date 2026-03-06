@@ -57,8 +57,8 @@ public class Notification {
     private UUID relatedAuctionId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "related_booking_id")
-    private Booking relatedBooking;
+    @JoinColumn(name = "related_order_id")
+    private Order relatedOrder;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

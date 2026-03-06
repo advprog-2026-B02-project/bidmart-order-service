@@ -22,7 +22,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @Entity
 @Table(name = "orders")
-public class Booking {
+public class Order {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -66,7 +66,7 @@ public class Booking {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private BookingStatus status;
+    private OrderStatus status;
 
     @Column(name = "total_amount", nullable = false)
     private Integer totalAmount;
@@ -81,7 +81,7 @@ public class Booking {
     public void prePersist() {
         LocalDateTime now = LocalDateTime.now();
         if (status == null) {
-            status = BookingStatus.CREATED;
+            status = OrderStatus.CREATED;
         }
         if (createdAt == null) {
             createdAt = now;
