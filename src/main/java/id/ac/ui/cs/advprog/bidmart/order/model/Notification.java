@@ -4,12 +4,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -56,9 +53,8 @@ public class Notification {
     @Column(name = "related_auction_id")
     private UUID relatedAuctionId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "related_order_id")
-    private Order relatedOrder;
+    @Column(name = "related_order_id")
+    private UUID relatedOrderId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
