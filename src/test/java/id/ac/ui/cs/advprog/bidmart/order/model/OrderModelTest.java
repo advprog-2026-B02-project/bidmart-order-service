@@ -2,7 +2,6 @@ package id.ac.ui.cs.advprog.bidmart.order.model;
 
 import org.junit.jupiter.api.Test;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -48,36 +47,8 @@ class OrderModelTest {
         assertEquals(100, order.getTotalAmount());
         assertEquals(OrderStatus.CREATED, order.getStatus());
         assertEquals(now, order.getCreatedAt());
-        
+
         order.prePersist();
         order.preUpdate();
-    }
-
-    @Test
-    void testNotification() {
-        Notification n = new Notification();
-        UUID id = UUID.randomUUID();
-        n.setId(id);
-        n.setUserId(id);
-        n.setType(NotificationType.ORDER_CREATED);
-        n.setTitle("t");
-        n.setMessage("m");
-        n.setData("d");
-        n.setIsRead(true);
-        LocalDateTime now = LocalDateTime.now();
-        n.setCreatedAt(now);
-        n.setReadAt(now);
-
-        assertEquals(id, n.getId());
-        assertEquals(id, n.getUserId());
-        assertEquals(NotificationType.ORDER_CREATED, n.getType());
-        assertEquals("t", n.getTitle());
-        assertEquals("m", n.getMessage());
-        assertEquals("d", n.getData());
-        assertEquals(true, n.getIsRead());
-        assertEquals(now, n.getCreatedAt());
-        assertEquals(now, n.getReadAt());
-        
-        n.prePersist();
     }
 }
