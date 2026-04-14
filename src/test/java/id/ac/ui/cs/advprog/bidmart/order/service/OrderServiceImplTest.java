@@ -160,4 +160,14 @@ class OrderServiceImplTest {
         orderService.createOrderFromEvent(req);
         verify(orderRepository, never()).save(any(Order.class));
     }
+
+    @Test
+    void getOrderById_NoImageUrl() {
+        order.setListingImageUrl(null);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        OrderResponse response = orderService.getOrderById(orderId, buyerId);
+        assertNotNull(response);
+        assertTrue(response.getListing().getImages().isEmpty());
+    }
 }
