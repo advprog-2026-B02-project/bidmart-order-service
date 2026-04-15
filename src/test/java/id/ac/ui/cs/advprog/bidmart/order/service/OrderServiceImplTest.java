@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.bidmart.order.service;
 
+import id.ac.ui.cs.advprog.bidmart.notifications.service.NotificationService;
 import id.ac.ui.cs.advprog.bidmart.order.dto.CreateOrder;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderListResponse;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderResponse;
@@ -18,8 +19,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,6 +33,9 @@ class OrderServiceImplTest {
 
     @Mock
     private OrderRepository orderRepository;
+
+    @Mock
+    private NotificationService notificationService;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -145,11 +147,22 @@ class OrderServiceImplTest {
 
     @Test
     void createOrderFromEvent_NotExists_Saves() {
-        CreateOrder req = CreateOrder.builder().auctionId(UUID.randomUUID()).build();
+        CreateOrder req = CreateOrder.builder()
+                .auctionId(UUID.randomUUID())
+                .listingId(UUID.randomUUID())
+                .listingTitle("Test Item")
+                .buyerId(buyerId)
+                .buyerDisplayName("Buyer")
+                .sellerId(sellerId)
+                .sellerDisplayName("Seller")
+                .totalAmount(100)
+                .build();
         when(orderRepository.existsByAuctionId(req.getAuctionId())).thenReturn(false);
+        doNothing().when(notificationService).saveNotification(any());
 
         orderService.createOrderFromEvent(req);
         verify(orderRepository).save(any(Order.class));
+        verify(notificationService, times(2)).saveNotification(any());
     }
 
     @Test
