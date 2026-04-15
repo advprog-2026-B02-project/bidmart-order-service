@@ -1,5 +1,8 @@
 package id.ac.ui.cs.advprog.bidmart.order.service;
 
+import id.ac.ui.cs.advprog.bidmart.notifications.dto.SaveNotification;
+import id.ac.ui.cs.advprog.bidmart.notifications.model.NotificationType;
+import id.ac.ui.cs.advprog.bidmart.notifications.service.NotificationService;
 import id.ac.ui.cs.advprog.bidmart.order.dto.CreateOrder;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderResponse;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderSummary;
@@ -17,15 +20,18 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
+    private final NotificationService notificationService;
 
-    public OrderServiceImpl(OrderRepository orderRepository) {
+    public OrderServiceImpl(OrderRepository orderRepository, NotificationService notificationService) {
         this.orderRepository = orderRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -103,6 +109,33 @@ public class OrderServiceImpl implements OrderService {
         order.setTotalAmount(dto.getTotalAmount());
 
         orderRepository.save(order);
+
+        // send notification to buyer
+        notificationService.saveNotification(SaveNotification.builder()
+                .userId(dto.getBuyerId())
+                .type(NotificationType.ORDER_CREATED)
+                .title("Pesanan Berhasil Dibuat")
+                .message("Pesanan untuk " + dto.getListingTitle() + " telah berhasil dibuat.")
+                .data(Map.of(
+                        "orderId", order.getId().toString(),
+                        "listingTitle", dto.getListingTitle(),
+                        "totalAmount", dto.getTotalAmount().toString()
+                ))
+                .build());
+
+        // send notification to seller
+        notificationService.saveNotification(SaveNotification.builder()
+                .userId(dto.getSellerId())
+                .type(NotificationType.ORDER_CREATED)
+                .title("Pesanan Baru Diterima")
+                .message("Anda menerima pesanan baru untuk " + dto.getListingTitle() + ".")
+                .data(Map.of(
+                        "orderId", order.getId().toString(),
+                        "listingTitle", dto.getListingTitle(),
+                        "buyerDisplayName", dto.getBuyerDisplayName(),
+                        "totalAmount", dto.getTotalAmount().toString()
+                ))
+                .build());
     }
 
     private Order findOrderOrThrow(UUID orderId) {
