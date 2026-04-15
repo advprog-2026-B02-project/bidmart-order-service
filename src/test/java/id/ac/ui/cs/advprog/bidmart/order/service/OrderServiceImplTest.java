@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.bidmart.order.service;
 
 import id.ac.ui.cs.advprog.bidmart.notifications.service.NotificationService;
+import id.ac.ui.cs.advprog.bidmart.notifications.dto.SaveNotification;
 import id.ac.ui.cs.advprog.bidmart.order.dto.CreateOrder;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderListResponse;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderResponse;
@@ -158,11 +159,17 @@ class OrderServiceImplTest {
                 .totalAmount(100)
                 .build();
         when(orderRepository.existsByAuctionId(req.getAuctionId())).thenReturn(false);
-        doNothing().when(notificationService).saveNotification(any());
+        
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            order.setId(UUID.randomUUID()); // Simulate ID generation
+            return order;
+        });
+        doNothing().when(notificationService).saveNotification(any(SaveNotification.class));
 
         orderService.createOrderFromEvent(req);
         verify(orderRepository).save(any(Order.class));
-        verify(notificationService, times(2)).saveNotification(any());
+        verify(notificationService, times(2)).saveNotification(any(SaveNotification.class));
     }
 
     @Test
@@ -172,6 +179,7 @@ class OrderServiceImplTest {
 
         orderService.createOrderFromEvent(req);
         verify(orderRepository, never()).save(any(Order.class));
+        verify(notificationService, never()).saveNotification(any(SaveNotification.class));
     }
 
     @Test
