@@ -2,11 +2,14 @@ package id.ac.ui.cs.advprog.bidmart.order.controller;
 
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderListResponse;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderResponse;
+import id.ac.ui.cs.advprog.bidmart.order.dto.UpdateShippingRequest;
 import id.ac.ui.cs.advprog.bidmart.order.service.OrderService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -43,6 +46,27 @@ public class OrderController {
     ) {
         UUID userId = getUserIdFromAuthentication(authentication);
         return ResponseEntity.ok(orderService.getOrderById(orderId, userId));
+    }
+
+    @PutMapping("/{orderId}/ship")
+    public ResponseEntity<Void> updateShipping(
+            @PathVariable UUID orderId,
+            @RequestBody UpdateShippingRequest request,
+            Authentication authentication
+    ) {
+        UUID userId = getUserIdFromAuthentication(authentication);
+        orderService.updateShipping(orderId, userId, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/{orderId}/confirm-receipt")
+    public ResponseEntity<Void> confirmReceipt(
+            @PathVariable UUID orderId,
+            Authentication authentication
+    ) {
+        UUID userId = getUserIdFromAuthentication(authentication);
+        orderService.confirmReceipt(orderId, userId);
+        return ResponseEntity.ok().build();
     }
 
     @SuppressWarnings("unchecked")

@@ -58,6 +58,15 @@ public class Order {
     @Column(name = "shipping_postal_code", length = 10)
     private String shippingPostalCode;
 
+    @Column(name = "courier", length = 100)
+    private String courier;
+
+    @Column(name = "tracking_number", length = 255)
+    private String trackingNumber;
+
+    @Column(name = "shipped_at")
+    private LocalDateTime shippedAt;
+
     @Column(name = "seller_id", nullable = false)
     private UUID sellerId;
 

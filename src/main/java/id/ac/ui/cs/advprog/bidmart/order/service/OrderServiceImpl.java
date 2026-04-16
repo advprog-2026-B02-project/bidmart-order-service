@@ -4,9 +4,10 @@ import id.ac.ui.cs.advprog.bidmart.notifications.dto.SaveNotification;
 import id.ac.ui.cs.advprog.bidmart.notifications.model.NotificationType;
 import id.ac.ui.cs.advprog.bidmart.notifications.service.NotificationService;
 import id.ac.ui.cs.advprog.bidmart.order.dto.CreateOrder;
+import id.ac.ui.cs.advprog.bidmart.order.dto.OrderListResponse;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderResponse;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderSummary;
-import id.ac.ui.cs.advprog.bidmart.order.dto.OrderListResponse;
+import id.ac.ui.cs.advprog.bidmart.order.dto.UpdateShippingRequest;
 import id.ac.ui.cs.advprog.bidmart.order.model.Order;
 import id.ac.ui.cs.advprog.bidmart.order.model.OrderStatus;
 import id.ac.ui.cs.advprog.bidmart.order.repository.OrderRepository;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -134,6 +136,75 @@ public class OrderServiceImpl implements OrderService {
                         "listingTitle", dto.getListingTitle(),
                         "buyerDisplayName", dto.getBuyerDisplayName(),
                         "totalAmount", dto.getTotalAmount().toString()
+                ))
+                .build());
+    }
+
+    @Override
+    @Transactional
+    public void updateShipping(UUID orderId, UUID userId, UpdateShippingRequest request) {
+        Order order = findOrderOrThrow(orderId);
+
+        if (!order.getSellerId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Hanya penjual yang dapat mengupdate informasi pengiriman");
+        }
+
+        if (order.getStatus() != OrderStatus.PACKAGED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Pesanan harus dalam status PACKAGED untuk dapat mengupdate pengiriman");
+        }
+
+        // update shipping info
+        order.setCourier(request.getCourier());
+        order.setTrackingNumber(request.getTrackingNumber());
+        order.setShippedAt(LocalDateTime.now());
+        order.setStatus(OrderStatus.SHIPPED);
+        orderRepository.save(order);
+
+        // send notification
+        notificationService.saveNotification(SaveNotification.builder()
+                .userId(order.getBuyerId())
+                .type(NotificationType.ORDER_SHIPPED)
+                .title("Pesanan Telah Dikirim")
+                .message("Pesanan " + order.getListingTitle() + " telah dikirim.")
+                .data(Map.of(
+                        "orderId", order.getId().toString(),
+                        "listingTitle", order.getListingTitle(),
+                        "courier", request.getCourier() != null ? request.getCourier() : "",
+                        "trackingNumber", request.getTrackingNumber() != null ? request.getTrackingNumber() : ""
+                ))
+                .build());
+    }
+
+    @Override
+    @Transactional
+    public void confirmReceipt(UUID orderId, UUID userId) {
+        Order order = findOrderOrThrow(orderId);
+
+        if (!order.getBuyerId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Hanya pembeli yang dapat mengkonfirmasi penerimaan pesanan");
+        }
+
+        if (order.getStatus() != OrderStatus.SHIPPED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Pesanan harus dalam status SHIPPED untuk dapat dikonfirmasi penerimaan");
+        }
+
+        order.setStatus(OrderStatus.COMPLETED);
+        orderRepository.save(order);
+
+        // send notification
+        notificationService.saveNotification(SaveNotification.builder()
+                .userId(order.getSellerId())
+                .type(NotificationType.ORDER_COMPLETED)
+                .title("Pesanan Telah Diterima Pembeli")
+                .message("Pesanan " + order.getListingTitle() + " telah dikonfirmasi diterima oleh pembeli.")
+                .data(Map.of(
+                        "orderId", order.getId().toString(),
+                        "listingTitle", order.getListingTitle(),
+                        "buyerDisplayName", order.getBuyerDisplayName()
                 ))
                 .build());
     }
