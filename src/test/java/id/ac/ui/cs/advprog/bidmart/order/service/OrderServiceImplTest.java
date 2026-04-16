@@ -1,10 +1,11 @@
 package id.ac.ui.cs.advprog.bidmart.order.service;
 
-import id.ac.ui.cs.advprog.bidmart.notifications.service.NotificationService;
 import id.ac.ui.cs.advprog.bidmart.notifications.dto.SaveNotification;
+import id.ac.ui.cs.advprog.bidmart.notifications.service.NotificationService;
 import id.ac.ui.cs.advprog.bidmart.order.dto.CreateOrder;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderListResponse;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderResponse;
+import id.ac.ui.cs.advprog.bidmart.order.dto.UpdateShippingRequest;
 import id.ac.ui.cs.advprog.bidmart.order.model.Order;
 import id.ac.ui.cs.advprog.bidmart.order.model.OrderStatus;
 import id.ac.ui.cs.advprog.bidmart.order.repository.OrderRepository;
@@ -190,5 +191,68 @@ class OrderServiceImplTest {
         OrderResponse response = orderService.getOrderById(orderId, buyerId);
         assertNotNull(response);
         assertTrue(response.getListing().getImages().isEmpty());
+    }
+
+    @Test
+    void updateShipping_AsSeller_Success() {
+        order.setStatus(OrderStatus.PACKAGED);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(notificationService).saveNotification(any(SaveNotification.class));
+
+        UpdateShippingRequest request = UpdateShippingRequest.builder()
+                .status("SHIPPED")
+                .courier("JNE")
+                .trackingNumber("TRK123")
+                .build();
+
+        orderService.updateShipping(orderId, sellerId, request);
+
+        assertEquals(OrderStatus.SHIPPED, order.getStatus());
+        assertEquals("JNE", order.getCourier());
+        assertEquals("TRK123", order.getTrackingNumber());
+        assertNotNull(order.getShippedAt());
+        verify(orderRepository).save(order);
+        verify(notificationService).saveNotification(any(SaveNotification.class));
+    }
+
+    @Test
+    void updateShipping_ForbiddenForNonSeller() {
+        order.setStatus(OrderStatus.PACKAGED);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        UpdateShippingRequest request = UpdateShippingRequest.builder()
+                .status("SHIPPED")
+                .courier("JNE")
+                .trackingNumber("TRK123")
+                .build();
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> orderService.updateShipping(orderId, buyerId, request));
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+    }
+
+    @Test
+    void confirmReceipt_AsBuyer_Success() {
+        order.setStatus(OrderStatus.SHIPPED);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(notificationService).saveNotification(any(SaveNotification.class));
+
+        orderService.confirmReceipt(orderId, buyerId);
+
+        assertEquals(OrderStatus.COMPLETED, order.getStatus());
+        verify(orderRepository).save(order);
+        verify(notificationService).saveNotification(any(SaveNotification.class));
+    }
+
+    @Test
+    void confirmReceipt_BadRequestWhenNotShipped() {
+        order.setStatus(OrderStatus.PACKAGED);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> orderService.confirmReceipt(orderId, buyerId));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
     }
 }
