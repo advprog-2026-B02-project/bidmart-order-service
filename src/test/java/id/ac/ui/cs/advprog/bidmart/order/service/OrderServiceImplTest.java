@@ -1,8 +1,11 @@
 package id.ac.ui.cs.advprog.bidmart.order.service;
 
+import id.ac.ui.cs.advprog.bidmart.notifications.dto.SaveNotification;
+import id.ac.ui.cs.advprog.bidmart.notifications.service.NotificationService;
 import id.ac.ui.cs.advprog.bidmart.order.dto.CreateOrder;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderListResponse;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderResponse;
+import id.ac.ui.cs.advprog.bidmart.order.dto.UpdateShippingRequest;
 import id.ac.ui.cs.advprog.bidmart.order.model.Order;
 import id.ac.ui.cs.advprog.bidmart.order.model.OrderStatus;
 import id.ac.ui.cs.advprog.bidmart.order.repository.OrderRepository;
@@ -18,8 +21,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,6 +35,9 @@ class OrderServiceImplTest {
 
     @Mock
     private OrderRepository orderRepository;
+
+    @Mock
+    private NotificationService notificationService;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -145,11 +149,28 @@ class OrderServiceImplTest {
 
     @Test
     void createOrderFromEvent_NotExists_Saves() {
-        CreateOrder req = CreateOrder.builder().auctionId(UUID.randomUUID()).build();
+        CreateOrder req = CreateOrder.builder()
+                .auctionId(UUID.randomUUID())
+                .listingId(UUID.randomUUID())
+                .listingTitle("Test Item")
+                .buyerId(buyerId)
+                .buyerDisplayName("Buyer")
+                .sellerId(sellerId)
+                .sellerDisplayName("Seller")
+                .totalAmount(100)
+                .build();
         when(orderRepository.existsByAuctionId(req.getAuctionId())).thenReturn(false);
+        
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            order.setId(UUID.randomUUID()); // Simulate ID generation
+            return order;
+        });
+        doNothing().when(notificationService).saveNotification(any(SaveNotification.class));
 
         orderService.createOrderFromEvent(req);
         verify(orderRepository).save(any(Order.class));
+        verify(notificationService, times(2)).saveNotification(any(SaveNotification.class));
     }
 
     @Test
@@ -159,6 +180,7 @@ class OrderServiceImplTest {
 
         orderService.createOrderFromEvent(req);
         verify(orderRepository, never()).save(any(Order.class));
+        verify(notificationService, never()).saveNotification(any(SaveNotification.class));
     }
 
     @Test
@@ -169,5 +191,68 @@ class OrderServiceImplTest {
         OrderResponse response = orderService.getOrderById(orderId, buyerId);
         assertNotNull(response);
         assertTrue(response.getListing().getImages().isEmpty());
+    }
+
+    @Test
+    void updateShipping_AsSeller_Success() {
+        order.setStatus(OrderStatus.PACKAGED);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(notificationService).saveNotification(any(SaveNotification.class));
+
+        UpdateShippingRequest request = UpdateShippingRequest.builder()
+                .status("SHIPPED")
+                .courier("JNE")
+                .trackingNumber("TRK123")
+                .build();
+
+        orderService.updateShipping(orderId, sellerId, request);
+
+        assertEquals(OrderStatus.SHIPPED, order.getStatus());
+        assertEquals("JNE", order.getCourier());
+        assertEquals("TRK123", order.getTrackingNumber());
+        assertNotNull(order.getShippedAt());
+        verify(orderRepository).save(order);
+        verify(notificationService).saveNotification(any(SaveNotification.class));
+    }
+
+    @Test
+    void updateShipping_ForbiddenForNonSeller() {
+        order.setStatus(OrderStatus.PACKAGED);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        UpdateShippingRequest request = UpdateShippingRequest.builder()
+                .status("SHIPPED")
+                .courier("JNE")
+                .trackingNumber("TRK123")
+                .build();
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> orderService.updateShipping(orderId, buyerId, request));
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+    }
+
+    @Test
+    void confirmReceipt_AsBuyer_Success() {
+        order.setStatus(OrderStatus.SHIPPED);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(notificationService).saveNotification(any(SaveNotification.class));
+
+        orderService.confirmReceipt(orderId, buyerId);
+
+        assertEquals(OrderStatus.COMPLETED, order.getStatus());
+        verify(orderRepository).save(order);
+        verify(notificationService).saveNotification(any(SaveNotification.class));
+    }
+
+    @Test
+    void confirmReceipt_BadRequestWhenNotShipped() {
+        order.setStatus(OrderStatus.PACKAGED);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> orderService.confirmReceipt(orderId, buyerId));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
     }
 }
