@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: bidmart-order
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://ep-xxxxx-xxxxx-12345.ap-southeast-1.aws.neon.tech/neondb?sslmode=require}
+    username: ${DATABASE_USERNAME:neondb_owner}
+    password: ${DATABASE_PASSWORD:your-neon-password}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+server:
+  port: 8086
+
+app:
+  base-url: ${APP_BASE_URL:http://localhost:8086}
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:3000}
+  client:
+    user-url: ${USER_SERVICE_URL:http://localhost:8081}
+    bidding-url: ${BIDDING_SERVICE_URL:http://localhost:8082}
+    catalog-url: ${CATALOG_SERVICE_URL:http://localhost:8083}
+    wallet-url: ${WALLET_SERVICE_URL:http://localhost:8084}
+    notification-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
+
+jwt:
+  secret: ${JWT_SECRET:your-256-bit-secret-key-change-in-production-please}
+  access-token-expiration: 900000
+  refresh-token-expiration: 604800000
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    url: jdbc:h2:mem:bidmart_order_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
