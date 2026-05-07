@@ -1,8 +1,10 @@
 package id.ac.ui.cs.advprog.bidmart.order.service;
 
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderResponse;
+import id.ac.ui.cs.advprog.bidmart.order.dto.ResolveDisputeRequest;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderListResponse;
 import id.ac.ui.cs.advprog.bidmart.order.dto.CreateOrder;
+import id.ac.ui.cs.advprog.bidmart.order.dto.DisputeRequest;
 import id.ac.ui.cs.advprog.bidmart.order.dto.UpdateShippingRequest;
 
 import java.util.UUID;
@@ -14,5 +16,6 @@ public interface OrderService {
     void createOrderFromEvent(CreateOrder dto);
     void updateShipping(UUID orderId, UUID userId, UpdateShippingRequest request);
     void confirmReceipt(UUID orderId, UUID userId);
-
+    void createDispute(UUID orderId, UUID userId, DisputeRequest request);
+    void resolveDispute(UUID orderId, ResolveDisputeRequest request);
 }

@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.bidmart.order.controller;
 
+import id.ac.ui.cs.advprog.bidmart.order.dto.DisputeRequest;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderListResponse;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderResponse;
 import id.ac.ui.cs.advprog.bidmart.order.dto.UpdateShippingRequest;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -57,6 +59,15 @@ public class OrderController {
             @RequestHeader("X-User-Id") UUID userId,
             @PathVariable UUID orderId) {
         orderService.confirmReceipt(orderId, userId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{orderId}/dispute")
+    public ResponseEntity<Void> createDispute(
+            @PathVariable UUID orderId,
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestBody DisputeRequest request) {
+        orderService.createDispute(orderId, userId, request);
         return ResponseEntity.ok().build();
     }
 }

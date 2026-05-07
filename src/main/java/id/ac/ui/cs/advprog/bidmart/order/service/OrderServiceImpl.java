@@ -2,11 +2,12 @@ package id.ac.ui.cs.advprog.bidmart.order.service;
 
 import id.ac.ui.cs.advprog.bidmart.order.dto.SaveNotification;
 import id.ac.ui.cs.advprog.bidmart.order.model.NotificationType;
-import id.ac.ui.cs.advprog.bidmart.order.service.NotificationService;
 import id.ac.ui.cs.advprog.bidmart.order.dto.CreateOrder;
+import id.ac.ui.cs.advprog.bidmart.order.dto.DisputeRequest;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderListResponse;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderResponse;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderSummary;
+import id.ac.ui.cs.advprog.bidmart.order.dto.ResolveDisputeRequest;
 import id.ac.ui.cs.advprog.bidmart.order.dto.UpdateShippingRequest;
 import id.ac.ui.cs.advprog.bidmart.order.model.Order;
 import id.ac.ui.cs.advprog.bidmart.order.model.OrderStatus;
@@ -205,6 +206,82 @@ public class OrderServiceImpl implements OrderService {
                         "orderId", order.getId().toString(),
                         "listingTitle", order.getListingTitle(),
                         "buyerDisplayName", order.getBuyerDisplayName()
+                ))
+                .build());
+    }
+
+    @Override
+    @Transactional
+    public void createDispute(UUID orderId, UUID userId, DisputeRequest request){
+        Order order = findOrderOrThrow(orderId);
+
+        if (!order.getBuyerId().equals(userId)) {
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "Hanya pembeli yang dapat mengajukan sengketa");
+        }
+
+        if (order.getStatus() != OrderStatus.SHIPPED) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Sengketa hanya bisa diajukan pada pesanan berstatus SHIPPED");
+        }
+
+        order.setStatus(OrderStatus.DISPUTED);
+        order.setDisputeReason(request.getReason());
+        order.setDisputeDescription(request.getDescription());
+        order.setDisputedAt(LocalDateTime.now());
+        order.setEvidenceImages(                           
+                request.getEvidenceImages() != null
+                        ? String.join(",", request.getEvidenceImages())
+                        : null
+        );
+        orderRepository.save(order);
+
+        notificationService.saveNotification(SaveNotification.builder()
+            .userId(order.getSellerId())
+            .type(NotificationType.ORDER_DISPUTED)
+            .title("Sengketa Diajukan")
+            .message("Pembeli mengajukan sengketa untuk pesanan " + order.getListingTitle())
+            .data(Map.of("orderId", order.getId().toString()))
+            .build());
+    }
+
+    @Override
+    @Transactional
+    public void resolveDispute(UUID orderId, ResolveDisputeRequest request){
+        Order order = findOrderOrThrow(orderId);
+
+        if (order.getStatus() != OrderStatus.DISPUTED) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Pesanan tidak dalam status sengketa");
+        }
+
+        order.setStatus(OrderStatus.RESOLVED);
+        order.setDisputeResolution(request.getResolution());
+        order.setDisputeNote(request.getNote());
+        order.setResolvedAt(LocalDateTime.now());
+        orderRepository.save(order);
+
+        notificationService.saveNotification(SaveNotification.builder()
+                .userId(order.getBuyerId())
+                .type(NotificationType.ORDER_RESOLVED)
+                .title("Sengketa Diselesaikan")
+                .message("Sengketa pesanan " + order.getListingTitle() 
+                        + " telah diselesaikan dengan keputusan: " + request.getResolution())
+                .data(Map.of(
+                        "orderId", order.getId().toString(),
+                        "resolution", request.getResolution()
+                ))
+                .build());
+
+        notificationService.saveNotification(SaveNotification.builder()
+                .userId(order.getSellerId())
+                .type(NotificationType.ORDER_RESOLVED)
+                .title("Sengketa Diselesaikan")
+                .message("Sengketa pesanan " + order.getListingTitle()
+                        + " telah diselesaikan dengan keputusan: " + request.getResolution())
+                .data(Map.of(
+                        "orderId", order.getId().toString(),
+                        "resolution", request.getResolution()
                 ))
                 .build());
     }

@@ -86,6 +86,27 @@ public class Order {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "dispute_reason", length = 255)
+    private String disputeReason;
+
+    @Column(name = "dispute_description", columnDefinition = "TEXT")
+    private String disputeDescription;
+
+    @Column(name = "disputed_at")
+    private LocalDateTime disputedAt;
+
+    @Column(name = "dispute_resolution", length = 50)
+    private String disputeResolution;  // REFUND_BUYER, RELEASE_TO_SELLER
+
+    @Column(name = "dispute_note", columnDefinition = "TEXT")
+    private String disputeNote;
+
+    @Column(name = "resolved_at")
+    private LocalDateTime resolvedAt;
+
+    @Column(name = "evidence_images", columnDefinition = "TEXT")
+    private String evidenceImages;
+
     @PrePersist
     public void prePersist() {
         LocalDateTime now = LocalDateTime.now();
