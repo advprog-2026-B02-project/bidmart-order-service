@@ -2,9 +2,9 @@ spring:
   application:
     name: bidmart-order
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://ep-xxxxx-xxxxx-12345.ap-southeast-1.aws.neon.tech/neondb?sslmode=require}
+    url: ${DATABASE_URL:jdbc:postgresql://ep-withered-heart-a1o4re2p-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require}
     username: ${DATABASE_USERNAME:neondb_owner}
-    password: ${DATABASE_PASSWORD:your-neon-password}
+    password: ${DATABASE_PASSWORD:npg_HDi60JKXcstm}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:

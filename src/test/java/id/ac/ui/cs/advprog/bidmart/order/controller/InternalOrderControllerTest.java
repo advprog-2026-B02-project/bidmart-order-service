@@ -1,0 +1,43 @@
+package id.ac.ui.cs.advprog.bidmart.order.controller;
+
+import id.ac.ui.cs.advprog.bidmart.order.dto.CreateOrder;
+import id.ac.ui.cs.advprog.bidmart.order.service.OrderService;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.ResponseEntity;
+
+import java.util.Map;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.doNothing;
+
+@ExtendWith(MockitoExtension.class)
+class InternalOrderControllerTest {
+
+    @Mock
+    private OrderService orderService;
+
+    @InjectMocks
+    private InternalOrderController controller;
+
+    @Test
+    void createOrderFromEvent_ReturnsCreatedMap() {
+        CreateOrder req = CreateOrder.builder()
+                .auctionId(UUID.randomUUID())
+                .listingTitle("Title")
+                .build();
+
+        doNothing().when(orderService).createOrderFromEvent(req);
+
+        ResponseEntity<Map<String, Object>> res = controller.createOrderFromEvent("token", "idemp", req);
+
+        assertEquals(201, res.getStatusCodeValue());
+        assertEquals(req.getAuctionId().toString(), res.getBody().get("auctionId"));
+        assertEquals("CREATED", res.getBody().get("status"));
+        assertNotNull(res.getBody().get("createdAt"));
+    }
+}
