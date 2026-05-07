@@ -10,9 +10,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 
-import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -31,15 +29,12 @@ class OrderControllerTest {
     @Test
     void getOrders() {
         UUID userId = UUID.randomUUID();
-        Authentication authentication = mock(Authentication.class);
-        when(authentication.getPrincipal()).thenReturn(Map.of("userId", userId.toString()));
         OrderListResponse listResponse = OrderListResponse.builder().build();
-
         when(orderService.getOrders(userId, "BUYER", "CREATED", 0, 20))
                 .thenReturn(listResponse);
 
         ResponseEntity<OrderListResponse> res = orderController.getOrders(
-                authentication, "BUYER", "CREATED", 0, 20
+                userId, "BUYER", "CREATED", 0, 20
         );
 
         assertEquals(200, res.getStatusCode().value());
@@ -51,13 +46,10 @@ class OrderControllerTest {
     void getOrderById() {
         UUID orderId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        Authentication authentication = mock(Authentication.class);
-        when(authentication.getPrincipal()).thenReturn(Map.of("userId", userId.toString()));
         OrderResponse orderResponse = OrderResponse.builder().id(orderId).build();
-
         when(orderService.getOrderById(orderId, userId)).thenReturn(orderResponse);
 
-        ResponseEntity<OrderResponse> res = orderController.getOrderById(authentication, orderId);
+        ResponseEntity<OrderResponse> res = orderController.getOrderById(userId, orderId);
 
         assertEquals(200, res.getStatusCode().value());
         assertNotNull(res.getBody());
@@ -68,16 +60,12 @@ class OrderControllerTest {
     void updateShipping() {
         UUID orderId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        Authentication authentication = mock(Authentication.class);
-        when(authentication.getPrincipal()).thenReturn(Map.of("userId", userId.toString()));
-
         UpdateShippingRequest request = UpdateShippingRequest.builder()
-                .status("SHIPPED")
                 .courier("JNE")
                 .trackingNumber("TRK123")
                 .build();
 
-        ResponseEntity<Void> res = orderController.updateShipping(orderId, request, authentication);
+        ResponseEntity<Void> res = orderController.updateShipping(userId, orderId, request);
 
         assertEquals(200, res.getStatusCode().value());
         verify(orderService).updateShipping(orderId, userId, request);
@@ -87,10 +75,8 @@ class OrderControllerTest {
     void confirmReceipt() {
         UUID orderId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        Authentication authentication = mock(Authentication.class);
-        when(authentication.getPrincipal()).thenReturn(Map.of("userId", userId.toString()));
 
-        ResponseEntity<Void> res = orderController.confirmReceipt(orderId, authentication);
+        ResponseEntity<Void> res = orderController.confirmReceipt(userId, orderId);
 
         assertEquals(200, res.getStatusCode().value());
         verify(orderService).confirmReceipt(orderId, userId);

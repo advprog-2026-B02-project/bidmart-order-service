@@ -21,6 +21,7 @@ server:
 app:
   base-url: ${APP_BASE_URL:http://localhost:8086}
   frontend-url: ${APP_FRONTEND_URL:http://localhost:3000}
+  service-token: ${SERVICE_TOKEN:internal-service-secret}
   client:
     user-url: ${USER_SERVICE_URL:http://localhost:8081}
     bidding-url: ${BIDDING_SERVICE_URL:http://localhost:8082}
