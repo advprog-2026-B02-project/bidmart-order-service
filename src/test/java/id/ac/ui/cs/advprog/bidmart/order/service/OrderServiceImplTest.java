@@ -38,6 +38,9 @@ class OrderServiceImplTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private id.ac.ui.cs.advprog.bidmart.order.repository.IdempotencyRepository idempotencyRepository;
+
     @InjectMocks
     private OrderServiceImpl orderService;
 
@@ -159,6 +162,7 @@ class OrderServiceImplTest {
                 .totalAmount(100)
                 .build();
         when(orderRepository.existsByAuctionId(req.getAuctionId())).thenReturn(false);
+        when(idempotencyRepository.findByKey(anyString())).thenReturn(Optional.empty());
         
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
             Order order = invocation.getArgument(0);
@@ -167,7 +171,7 @@ class OrderServiceImplTest {
         });
         doNothing().when(notificationService).saveNotification(any(SaveNotification.class));
 
-        orderService.createOrderFromEvent(req);
+        orderService.createOrderFromEvent(req, "idemp");
         verify(orderRepository).save(any(Order.class));
         verify(notificationService, times(2)).saveNotification(any(SaveNotification.class));
     }
@@ -177,10 +181,31 @@ class OrderServiceImplTest {
         CreateOrder req = CreateOrder.builder().auctionId(UUID.randomUUID()).build();
         when(orderRepository.existsByAuctionId(req.getAuctionId())).thenReturn(true);
 
-        orderService.createOrderFromEvent(req);
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+            () -> orderService.createOrderFromEvent(req, null));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
         verify(orderRepository, never()).save(any(Order.class));
         verify(notificationService, never()).saveNotification(any(SaveNotification.class));
     }
+
+        @Test
+        void createOrderFromEvent_DuplicateIdempotencyKey_ThrowsConflict() {
+        CreateOrder req = CreateOrder.builder().auctionId(UUID.randomUUID()).build();
+        when(idempotencyRepository.findByKey("idemp")).thenReturn(
+            java.util.Optional.of(new id.ac.ui.cs.advprog.bidmart.order.model.IdempotencyKey(
+                "idemp",
+                UUID.randomUUID(),
+                req.getAuctionId(),
+                java.time.LocalDateTime.now())));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+            () -> orderService.createOrderFromEvent(req, "idemp"));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        verify(orderRepository, never()).save(any(Order.class));
+        verify(notificationService, never()).saveNotification(any(SaveNotification.class));
+        }
 
     @Test
     void getOrderById_NoImageUrl() {

@@ -3,7 +3,6 @@ package id.ac.ui.cs.advprog.bidmart.order.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import id.ac.ui.cs.advprog.bidmart.order.dto.CreateOrder;
-import java.time.LocalDateTime;
 
 import id.ac.ui.cs.advprog.bidmart.order.service.OrderService;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,11 +27,12 @@ public class InternalOrderController {
             @RequestHeader("X-Service-Token") String serviceToken,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestBody CreateOrder request) {
-        orderService.createOrderFromEvent(request);
+        var order = orderService.createOrderFromEvent(request, idempotencyKey);
+        java.time.LocalDateTime createdAt = order != null ? order.getCreatedAt() : java.time.LocalDateTime.now();
         return ResponseEntity.status(201).body(Map.of(
             "auctionId", request.getAuctionId().toString(),
             "status", "CREATED",
-            "createdAt", LocalDateTime.now().toString()
+            "createdAt", createdAt.toString()
         ));
     }
 }

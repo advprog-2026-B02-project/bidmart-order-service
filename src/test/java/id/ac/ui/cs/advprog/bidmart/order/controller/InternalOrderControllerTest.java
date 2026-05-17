@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.doNothing;
 
 @ExtendWith(MockitoExtension.class)
 class InternalOrderControllerTest {
@@ -31,7 +30,7 @@ class InternalOrderControllerTest {
                 .listingTitle("Title")
                 .build();
 
-        doNothing().when(orderService).createOrderFromEvent(req);
+        org.mockito.Mockito.when(orderService.createOrderFromEvent(req, "idemp")).thenReturn(null);
 
         ResponseEntity<Map<String, Object>> res = controller.createOrderFromEvent("token", "idemp", req);
 

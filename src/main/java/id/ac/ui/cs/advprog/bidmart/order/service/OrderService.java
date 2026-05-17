@@ -13,7 +13,7 @@ public interface OrderService {
 
     OrderListResponse getOrders(UUID userId, String role, String status, int page, int size);
     OrderResponse getOrderById(UUID orderId, UUID userId);
-    void createOrderFromEvent(CreateOrder dto);
+    id.ac.ui.cs.advprog.bidmart.order.model.Order createOrderFromEvent(CreateOrder dto, String idempotencyKey);
     void updateShipping(UUID orderId, UUID userId, UpdateShippingRequest request);
     void confirmReceipt(UUID orderId, UUID userId);
     void createDispute(UUID orderId, UUID userId, DisputeRequest request);

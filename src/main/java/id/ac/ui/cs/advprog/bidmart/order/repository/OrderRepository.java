@@ -20,4 +20,5 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     Page<Order> findBySellerIdAndStatus(UUID sellerId, OrderStatus status, Pageable pageable);
 
     boolean existsByAuctionId(UUID auctionId);
+    java.util.Optional<Order> findByAuctionId(UUID auctionId);
 }

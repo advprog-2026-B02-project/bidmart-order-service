@@ -29,13 +29,16 @@ import java.util.UUID;
 @Service
 public class OrderServiceImpl implements OrderService {
 
-    private final OrderRepository orderRepository;
-    private final NotificationService notificationService;
+        private final OrderRepository orderRepository;
+        private final NotificationService notificationService;
+        private final id.ac.ui.cs.advprog.bidmart.order.repository.IdempotencyRepository idempotencyRepository;
 
-    public OrderServiceImpl(OrderRepository orderRepository, NotificationService notificationService) {
-        this.orderRepository = orderRepository;
-        this.notificationService = notificationService;
-    }
+        public OrderServiceImpl(OrderRepository orderRepository, NotificationService notificationService,
+                                                        id.ac.ui.cs.advprog.bidmart.order.repository.IdempotencyRepository idempotencyRepository) {
+                this.orderRepository = orderRepository;
+                this.notificationService = notificationService;
+                this.idempotencyRepository = idempotencyRepository;
+        }
 
     @Override
     @Transactional(readOnly = true)
@@ -91,12 +94,21 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public void createOrderFromEvent(CreateOrder dto) {
-        if (orderRepository.existsByAuctionId(dto.getAuctionId())) {
-            return;
-        }
+        public id.ac.ui.cs.advprog.bidmart.order.model.Order createOrderFromEvent(CreateOrder dto, String idempotencyKey) {
+                if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+                        var existing = idempotencyRepository.findByKey(idempotencyKey);
+                        if (existing.isPresent()) {
+                                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                                        "Idempotency-Key sudah pernah digunakan");
+                        }
+                }
 
-        Order order = new Order();
+                if (orderRepository.existsByAuctionId(dto.getAuctionId())) {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT,
+                                "Order untuk auctionId ini sudah ada");
+                }
+
+                id.ac.ui.cs.advprog.bidmart.order.model.Order order = new id.ac.ui.cs.advprog.bidmart.order.model.Order();
         order.setAuctionId(dto.getAuctionId());
         order.setListingId(dto.getListingId());
         order.setListingTitle(dto.getListingTitle());
@@ -112,6 +124,17 @@ public class OrderServiceImpl implements OrderService {
         order.setTotalAmount(dto.getTotalAmount());
 
         orderRepository.save(order);
+
+        // persist idempotency key mapping after order creation
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            id.ac.ui.cs.advprog.bidmart.order.model.IdempotencyKey key = new id.ac.ui.cs.advprog.bidmart.order.model.IdempotencyKey(
+                    idempotencyKey,
+                    order.getId(),
+                    order.getAuctionId(),
+                    java.time.LocalDateTime.now()
+            );
+            idempotencyRepository.save(key);
+        }
 
         // send notification to buyer
         notificationService.saveNotification(SaveNotification.builder()
