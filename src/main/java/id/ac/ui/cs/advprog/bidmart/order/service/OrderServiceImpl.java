@@ -162,6 +162,8 @@ public class OrderServiceImpl implements OrderService {
                         "totalAmount", dto.getTotalAmount().toString()
                 ))
                 .build());
+
+        return order;
     }
 
     @Override
