@@ -25,6 +25,11 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
 
   postgres:
@@ -38,17 +43,24 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U order_user -d bidmart_order"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
 
   order-service:
-    container_name: bidmart-order-app
-    image: mugmold/bidmart-order:latest
+    container_name: bidmart-order-service
+    image: ${DOCKERHUB_USERNAME}/bidmart-order-service:latest
     build:
       context: .
       dockerfile: Dockerfile
     depends_on:
-      - kafka
-      - postgres
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     ports:
       - "8085:8085"
     env_file:
