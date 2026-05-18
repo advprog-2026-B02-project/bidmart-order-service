@@ -1,70 +1,99 @@
 package id.ac.ui.cs.advprog.bidmart.order.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.bidmart.order.dto.SaveNotification;
 import id.ac.ui.cs.advprog.bidmart.order.model.NotificationType;
+import id.ac.ui.cs.advprog.bidmart.order.model.OutboxEvent;
+import id.ac.ui.cs.advprog.bidmart.order.repository.OutboxRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpEntity;
-import org.springframework.web.client.RestTemplate;
 
 import java.lang.reflect.Field;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class NotificationServiceClientTest {
 
-    private RestTemplate restTemplate;
+    private OutboxRepository outboxRepository;
+    private ObjectMapper objectMapper;
     private NotificationServiceClient client;
 
     @BeforeEach
     void setUp() throws Exception {
-        restTemplate = mock(RestTemplate.class);
-        client = new NotificationServiceClient(restTemplate);
+        outboxRepository = mock(OutboxRepository.class);
+        objectMapper = new ObjectMapper();
+        client = new NotificationServiceClient(outboxRepository, objectMapper);
 
-        // set private @Value fields via reflection
-        Field urlField = NotificationServiceClient.class.getDeclaredField("notificationUrl");
-        urlField.setAccessible(true);
-        urlField.set(client, "http://notif.example.com");
-
-        Field tokenField = NotificationServiceClient.class.getDeclaredField("serviceToken");
-        tokenField.setAccessible(true);
-        tokenField.set(client, "token-123");
+        Field topicField = NotificationServiceClient.class.getDeclaredField("notificationTopic");
+        topicField.setAccessible(true);
+        topicField.set(client, "order.notification-requests");
     }
 
     @Test
-    void saveNotification_CallsRestTemplate() {
-        when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(Void.class)))
-                .thenReturn(null);
+    void saveNotification_WritesOutboxEvent() {
+        when(outboxRepository.save(any(OutboxEvent.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        SaveNotification n = SaveNotification.builder()
+        UUID userId = UUID.randomUUID();
+        SaveNotification notification = SaveNotification.builder()
+                .userId(userId)
+                .type(NotificationType.ORDER_CREATED)
+                .title("t")
+                .message("m")
+                .build();
+
+        client.saveNotification(notification);
+
+        verify(outboxRepository).save(any(OutboxEvent.class));
+    }
+
+    @Test
+    void saveNotification_PersistsExpectedOutboxPayload() {
+        when(outboxRepository.save(any(OutboxEvent.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UUID userId = UUID.randomUUID();
+        SaveNotification notification = SaveNotification.builder()
+                .userId(userId)
+                .type(NotificationType.ORDER_CREATED)
+                .title("t")
+                .message("m")
+                .build();
+
+        client.saveNotification(notification);
+
+        verify(outboxRepository).save(org.mockito.ArgumentMatchers.argThat(event -> {
+            assertEquals("order.notification-requests", event.getTopic());
+            assertEquals("notification", event.getAggregateType());
+            assertEquals(userId.toString(), event.getAggregateId());
+            assertEquals(NotificationType.ORDER_CREATED.name(), event.getEventType());
+            assertEquals(userId.toString(), event.getMessageKey());
+            assertEquals("PENDING", event.getStatus().name());
+            assertNotNull(event.getPayload());
+            assertTrue(event.getPayload().contains("\"title\":\"t\""));
+            return true;
+        }));
+    }
+
+    @Test
+    void saveNotification_WhenRepositoryFails_PropagatesRuntimeException() {
+        doThrow(new RuntimeException("boom")).when(outboxRepository).save(any(OutboxEvent.class));
+
+        SaveNotification notification = SaveNotification.builder()
                 .userId(UUID.randomUUID())
                 .type(NotificationType.ORDER_CREATED)
                 .title("t")
                 .message("m")
                 .build();
 
-        client.saveNotification(n);
-
-        verify(restTemplate).postForObject(eq("http://notif.example.com/internal/v1/notifications"), any(HttpEntity.class), eq(Void.class));
-    }
-
-    @Test
-    void saveNotification_WhenRestThrows_DoesNotPropagate() {
-        when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(Void.class)))
-                .thenThrow(new RuntimeException("boom"));
-
-        SaveNotification n = SaveNotification.builder()
-                .userId(UUID.randomUUID())
-                .type(NotificationType.ORDER_CREATED)
-                .title("t")
-                .message("m")
-                .build();
-
-        assertDoesNotThrow(() -> client.saveNotification(n));
-        verify(restTemplate).postForObject(anyString(), any(HttpEntity.class), eq(Void.class));
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> client.saveNotification(notification));
+        assertEquals("boom", exception.getMessage());
     }
 }
