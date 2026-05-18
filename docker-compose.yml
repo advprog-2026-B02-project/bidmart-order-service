@@ -1,10 +1,54 @@
 services:
+  zookeeper:
+    container_name: bidmart-zookeeper
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    restart: unless-stopped
+
+  kafka:
+    container_name: bidmart-kafka
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    restart: unless-stopped
+
+  postgres:
+    container_name: bidmart-postgres
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: bidmart_order
+      POSTGRES_USER: order_user
+      POSTGRES_PASSWORD: order_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
   order-service:
     container_name: bidmart-order-app
     image: mugmold/bidmart-order:latest
     build:
       context: .
       dockerfile: Dockerfile
+    depends_on:
+      - kafka
+      - postgres
     ports:
       - "8085:8086"
     env_file:
@@ -14,10 +58,15 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       DATABASE_USERNAME: ${DATABASE_USERNAME}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
-      USER_SERVICE_URL: ${USER_SERVICE_URL}
-      BIDDING_SERVICE_URL: ${BIDDING_SERVICE_URL}
-      CATALOG_SERVICE_URL: ${CATALOG_SERVICE_URL}
-      WALLET_SERVICE_URL: ${WALLET_SERVICE_URL}
-      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL}
-      JWT_SECRET: ${JWT_SECRET}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_NOTIFICATION_TOPIC: order.notification-requests
+      USER_SERVICE_URL: ${USER_SERVICE_URL:http://localhost:8081}
+      BIDDING_SERVICE_URL: ${BIDDING_SERVICE_URL:http://localhost:8082}
+      CATALOG_SERVICE_URL: ${CATALOG_SERVICE_URL:http://localhost:8083}
+      WALLET_SERVICE_URL: ${WALLET_SERVICE_URL:http://localhost:8084}
+      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
+      JWT_SECRET: ${JWT_SECRET:your-256-bit-secret-key-change-in-production-please}
     restart: unless-stopped
+
+volumes:
+  postgres_data:
