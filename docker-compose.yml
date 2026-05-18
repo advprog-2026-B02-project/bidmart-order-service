@@ -50,7 +50,7 @@ services:
       - kafka
       - postgres
     ports:
-      - "8085:8086"
+      - "8085:8085"
     env_file:
       - .env
     environment:
@@ -64,8 +64,8 @@ services:
       BIDDING_SERVICE_URL: ${BIDDING_SERVICE_URL:http://localhost:8082}
       CATALOG_SERVICE_URL: ${CATALOG_SERVICE_URL:http://localhost:8083}
       WALLET_SERVICE_URL: ${WALLET_SERVICE_URL:http://localhost:8084}
-      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
-      JWT_SECRET: ${JWT_SECRET:your-256-bit-secret-key-change-in-production-please}
+      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
+      JWT_SECRET: ${JWT_SECRET}
     restart: unless-stopped
 
 volumes:

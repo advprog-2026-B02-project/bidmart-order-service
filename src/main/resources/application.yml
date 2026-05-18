@@ -16,10 +16,10 @@ spring:
     default-property-inclusion: non_null
 
 server:
-  port: 8086
+  port: 8085
 
 app:
-  base-url: ${APP_BASE_URL:http://localhost:8086}
+  base-url: ${APP_BASE_URL:http://localhost:8085}
   frontend-url: ${APP_FRONTEND_URL:http://localhost:3000}
   service-token: ${SERVICE_TOKEN:internal-service-secret}
   kafka:
@@ -34,7 +34,7 @@ app:
     bidding-url: ${BIDDING_SERVICE_URL:http://localhost:8082}
     catalog-url: ${CATALOG_SERVICE_URL:http://localhost:8083}
     wallet-url: ${WALLET_SERVICE_URL:http://localhost:8084}
-    notification-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
+    notification-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
 
 jwt:
   secret: ${JWT_SECRET:your-256-bit-secret-key-change-in-production-please}

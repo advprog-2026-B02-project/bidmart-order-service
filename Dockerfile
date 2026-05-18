@@ -17,6 +17,6 @@ WORKDIR /app
 
 COPY --from=builder /app/build/libs/*.jar app.jar
 
-EXPOSE 8086
+EXPOSE 8085
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
