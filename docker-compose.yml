@@ -52,7 +52,7 @@ services:
 
   order-service:
     container_name: bidmart-order-service
-    image: ${DOCKERHUB_USERNAME}/bidmart-order-service:latest
+    image: ${DOCKERHUB_USERNAME:-local}/bidmart-order-service:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -72,11 +72,11 @@ services:
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_NOTIFICATION_TOPIC: order.notification-requests
-      USER_SERVICE_URL: ${USER_SERVICE_URL:http://localhost:8081}
-      BIDDING_SERVICE_URL: ${BIDDING_SERVICE_URL:http://localhost:8082}
-      CATALOG_SERVICE_URL: ${CATALOG_SERVICE_URL:http://localhost:8083}
-      WALLET_SERVICE_URL: ${WALLET_SERVICE_URL:http://localhost:8084}
-      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
+      USER_SERVICE_URL: ${USER_SERVICE_URL:-http://localhost:8081}
+      BIDDING_SERVICE_URL: ${BIDDING_SERVICE_URL:-http://localhost:8082}
+      CATALOG_SERVICE_URL: ${CATALOG_SERVICE_URL:-http://localhost:8083}
+      WALLET_SERVICE_URL: ${WALLET_SERVICE_URL:-http://localhost:8084}
+      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-http://localhost:8086}
       JWT_SECRET: ${JWT_SECRET}
     restart: unless-stopped
 
