@@ -1,6 +1,8 @@
 spring:
   application:
     name: bidmart-order
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:29092}
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://ep-withered-heart-a1o4re2p-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require}
     username: ${DATABASE_USERNAME:neondb_owner}
