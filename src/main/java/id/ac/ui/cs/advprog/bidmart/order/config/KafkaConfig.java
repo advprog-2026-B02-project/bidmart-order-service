@@ -23,14 +23,24 @@ public class KafkaConfig {
 
     public static final String TOPIC_NOTIFICATION_REQUESTS = "order.notification-requests";
 
-    @Value("${app.kafka.bootstrap-servers:localhost:9092}")
+    @Value("${app.kafka.bootstrap-servers:${spring.kafka.bootstrap-servers:localhost:9092}}")
     private String bootstrapServers;
+
+    @Value("${app.kafka.admin.create-topics:false}")
+    private boolean createTopics;
+
+    @Value("${app.kafka.notification-topic:" + TOPIC_NOTIFICATION_REQUESTS + "}")
+    private String notificationTopic;
 
     @Bean
     public KafkaAdmin kafkaAdmin() {
         Map<String, Object> props = new HashMap<>();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        return new KafkaAdmin(props);
+        KafkaAdmin kafkaAdmin = new KafkaAdmin(props);
+        kafkaAdmin.setAutoCreate(createTopics);
+        kafkaAdmin.setFatalIfBrokerNotAvailable(false);
+        kafkaAdmin.setOperationTimeout(10);
+        return kafkaAdmin;
     }
 
     @Bean
@@ -49,7 +59,7 @@ public class KafkaConfig {
 
     @Bean
     public NewTopic notificationRequestsTopic() {
-        return TopicBuilder.name(TOPIC_NOTIFICATION_REQUESTS)
+        return TopicBuilder.name(notificationTopic)
                 .partitions(1)
                 .replicas(1)
                 .build();
