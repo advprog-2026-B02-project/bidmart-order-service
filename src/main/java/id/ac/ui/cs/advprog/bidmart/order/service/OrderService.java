@@ -12,6 +12,7 @@ import java.util.UUID;
 public interface OrderService {
 
     OrderListResponse getOrders(UUID userId, String role, String status, int page, int size);
+    OrderListResponse getOrdersAdmin(String status, int page, int size);
     OrderResponse getOrderById(UUID orderId, UUID userId);
     id.ac.ui.cs.advprog.bidmart.order.model.Order createOrderFromEvent(CreateOrder dto, String idempotencyKey);
     void updateShipping(UUID orderId, UUID userId, UpdateShippingRequest request);

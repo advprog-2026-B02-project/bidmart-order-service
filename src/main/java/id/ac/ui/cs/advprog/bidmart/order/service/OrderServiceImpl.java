@@ -92,6 +92,30 @@ public class OrderServiceImpl implements OrderService {
         return toResponseDTO(order);
     }
 
+        @Override
+        @Transactional(readOnly = true)
+        public OrderListResponse getOrdersAdmin(String status, int page, int size) {
+                Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+
+                Page<Order> result;
+                if (status != null && !status.isBlank()) {
+                        OrderStatus orderStatus = parseStatus(status);
+                        result = orderRepository.findByStatus(orderStatus, pageable);
+                } else {
+                        result = orderRepository.findAll(pageable);
+                }
+
+                List<OrderSummary> content = result.getContent().stream().map(this::toSummaryDTO).toList();
+
+                return OrderListResponse.builder()
+                                .content(content)
+                                .page(result.getNumber())
+                                .size(result.getSize())
+                                .totalElements(result.getTotalElements())
+                                .totalPages(result.getTotalPages())
+                                .build();
+        }
+
     @Override
     @Transactional
         public id.ac.ui.cs.advprog.bidmart.order.model.Order createOrderFromEvent(CreateOrder dto, String idempotencyKey) {
