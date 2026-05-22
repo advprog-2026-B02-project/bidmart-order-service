@@ -71,7 +71,6 @@ services:
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       KAFKA_NOTIFICATION_TOPIC: order.notification-requests
-      KAFKA_CREATE_TOPICS: "false"
       USER_SERVICE_URL: ${USER_SERVICE_URL:-http://localhost:8081}
       BIDDING_SERVICE_URL: ${BIDDING_SERVICE_URL:-http://localhost:8082}
       CATALOG_SERVICE_URL: ${CATALOG_SERVICE_URL:-http://localhost:8083}

@@ -91,7 +91,7 @@ class OrderServiceImplExtraTest {
 
     @Test
     void createDispute_BadRequestWhenNotShipped() {
-        order.setStatus(OrderStatus.PACKAGED);
+        order.setStatus(OrderStatus.CREATED);
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
 
         DisputeRequest req = DisputeRequest.builder().reason("r").build();

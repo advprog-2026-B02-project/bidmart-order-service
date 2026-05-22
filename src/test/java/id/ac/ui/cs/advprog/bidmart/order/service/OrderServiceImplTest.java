@@ -219,7 +219,7 @@ class OrderServiceImplTest {
 
     @Test
     void updateShipping_AsSeller_Success() {
-        order.setStatus(OrderStatus.PACKAGED);
+        order.setStatus(OrderStatus.CREATED);
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
         doNothing().when(notificationService).saveNotification(any(SaveNotification.class));
@@ -242,7 +242,7 @@ class OrderServiceImplTest {
 
     @Test
     void updateShipping_ForbiddenForNonSeller() {
-        order.setStatus(OrderStatus.PACKAGED);
+        order.setStatus(OrderStatus.CREATED);
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
 
         UpdateShippingRequest request = UpdateShippingRequest.builder()
@@ -272,7 +272,7 @@ class OrderServiceImplTest {
 
     @Test
     void confirmReceipt_BadRequestWhenNotShipped() {
-        order.setStatus(OrderStatus.PACKAGED);
+        order.setStatus(OrderStatus.CREATED);
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
