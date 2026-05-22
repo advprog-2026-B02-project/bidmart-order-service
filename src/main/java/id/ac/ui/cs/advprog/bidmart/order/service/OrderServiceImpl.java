@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -200,14 +201,33 @@ public class OrderServiceImpl implements OrderService {
                     "Hanya penjual yang dapat mengupdate informasi pengiriman");
         }
 
+        String requestedStatus = request.getStatus() == null || request.getStatus().isBlank()
+                ? "SHIPPED"
+                : request.getStatus().trim().toUpperCase();
+
+        if ("PACKAGED".equals(requestedStatus)) {
+            markPackaged(order);
+            return;
+        }
+
+        if (!"SHIPPED".equals(requestedStatus)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Status pengiriman tidak valid: " + request.getStatus());
+        }
+
         if (order.getStatus() != OrderStatus.PACKAGED) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Pesanan harus dalam status PACKAGED untuk dapat mengupdate pengiriman");
         }
+        if (request.getCourier() == null || request.getCourier().isBlank()
+                || request.getTrackingNumber() == null || request.getTrackingNumber().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Kurir dan nomor resi wajib diisi");
+        }
 
         // update shipping info
-        order.setCourier(request.getCourier());
-        order.setTrackingNumber(request.getTrackingNumber());
+        order.setCourier(request.getCourier().trim());
+        order.setTrackingNumber(request.getTrackingNumber().trim());
         order.setShippedAt(LocalDateTime.now());
         order.setStatus(OrderStatus.SHIPPED);
         orderRepository.save(order);
@@ -223,6 +243,27 @@ public class OrderServiceImpl implements OrderService {
                         "listingTitle", order.getListingTitle(),
                         "courier", request.getCourier() != null ? request.getCourier() : "",
                         "trackingNumber", request.getTrackingNumber() != null ? request.getTrackingNumber() : ""
+                ))
+                .build());
+    }
+
+    private void markPackaged(Order order) {
+        if (order.getStatus() != OrderStatus.CREATED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Hanya pesanan berstatus CREATED yang dapat ditandai dikemas");
+        }
+
+        order.setStatus(OrderStatus.PACKAGED);
+        orderRepository.save(order);
+
+        notificationService.saveNotification(SaveNotification.builder()
+                .userId(order.getBuyerId())
+                .type(NotificationType.ORDER_PACKAGED)
+                .title("Pesanan Sedang Dikemas")
+                .message("Pesanan " + order.getListingTitle() + " sedang dikemas oleh penjual.")
+                .data(Map.of(
+                        "orderId", order.getId().toString(),
+                        "listingTitle", order.getListingTitle()
                 ))
                 .build());
     }
@@ -287,7 +328,7 @@ public class OrderServiceImpl implements OrderService {
 
         notificationService.saveNotification(SaveNotification.builder()
             .userId(order.getSellerId())
-            .type(NotificationType.ORDER_DISPUTED)
+            .type(NotificationType.DISPUTE_CREATED)
             .title("Sengketa Diajukan")
             .message("Pembeli mengajukan sengketa untuk pesanan " + order.getListingTitle())
             .data(Map.of("orderId", order.getId().toString()))
@@ -312,7 +353,7 @@ public class OrderServiceImpl implements OrderService {
 
         notificationService.saveNotification(SaveNotification.builder()
                 .userId(order.getBuyerId())
-                .type(NotificationType.ORDER_RESOLVED)
+                .type(NotificationType.DISPUTE_RESOLVED)
                 .title("Sengketa Diselesaikan")
                 .message("Sengketa pesanan " + order.getListingTitle() 
                         + " telah diselesaikan dengan keputusan: " + request.getResolution())
@@ -324,7 +365,7 @@ public class OrderServiceImpl implements OrderService {
 
         notificationService.saveNotification(SaveNotification.builder()
                 .userId(order.getSellerId())
-                .type(NotificationType.ORDER_RESOLVED)
+                .type(NotificationType.DISPUTE_RESOLVED)
                 .title("Sengketa Diselesaikan")
                 .message("Sengketa pesanan " + order.getListingTitle()
                         + " telah diselesaikan dengan keputusan: " + request.getResolution())
@@ -396,9 +437,53 @@ public class OrderServiceImpl implements OrderService {
                         .displayName(order.getSellerDisplayName())
                         .build())
                 .status(order.getStatus().name())
-                .shipping(null)
-                .timeline(null)
+                .shipping(buildShippingDTO(order))
+                .timeline(buildTimelineDTO(order))
                 .createdAt(order.getCreatedAt())
                 .build();
+    }
+
+    private OrderResponse.ShippingDTO buildShippingDTO(Order order) {
+        if (order.getCourier() == null && order.getTrackingNumber() == null && order.getShippedAt() == null) {
+            return null;
+        }
+
+        return OrderResponse.ShippingDTO.builder()
+                .courier(order.getCourier())
+                .trackingNumber(order.getTrackingNumber())
+                .shippedAt(order.getShippedAt())
+                .build();
+    }
+
+    private List<OrderResponse.TimelineDTO> buildTimelineDTO(Order order) {
+        List<OrderResponse.TimelineDTO> timeline = new ArrayList<>();
+        timeline.add(OrderResponse.TimelineDTO.builder()
+                .status(OrderStatus.CREATED.name())
+                .timestamp(order.getCreatedAt())
+                .build());
+
+        if (order.getStatus() == OrderStatus.PACKAGED || order.getStatus() == OrderStatus.SHIPPED
+                || order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.DISPUTED
+                || order.getStatus() == OrderStatus.RESOLVED) {
+            timeline.add(OrderResponse.TimelineDTO.builder()
+                    .status(OrderStatus.PACKAGED.name())
+                    .timestamp(order.getUpdatedAt())
+                    .build());
+        }
+        if (order.getShippedAt() != null) {
+            timeline.add(OrderResponse.TimelineDTO.builder()
+                    .status(OrderStatus.SHIPPED.name())
+                    .timestamp(order.getShippedAt())
+                    .build());
+        }
+        if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.DISPUTED
+                || order.getStatus() == OrderStatus.RESOLVED) {
+            timeline.add(OrderResponse.TimelineDTO.builder()
+                    .status(order.getStatus().name())
+                    .timestamp(order.getUpdatedAt())
+                    .build());
+        }
+
+        return timeline;
     }
 }

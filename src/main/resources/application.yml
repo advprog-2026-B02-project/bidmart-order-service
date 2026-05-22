@@ -3,6 +3,11 @@ spring:
     name: bidmart-order
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}}
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:order-service}
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://ep-withered-heart-a1o4re2p-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require}
     username: ${DATABASE_USERNAME:neondb_owner}
@@ -24,7 +29,7 @@ server:
 app:
   base-url: ${APP_BASE_URL:http://localhost:8085}
   frontend-url: ${APP_FRONTEND_URL:http://localhost:3000}
-  service-token: ${SERVICE_TOKEN:internal-service-secret}
+  service-token: ${INTERNAL_SERVICE_TOKEN:${SERVICE_TOKEN:internal-service-secret}}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:${spring.kafka.bootstrap-servers:localhost:9092}}
     notification-topic: ${KAFKA_NOTIFICATION_TOPIC:order.notification-requests}
