@@ -4,10 +4,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-class AppConfigTest {
+public class AppConfigTest {
 
     @Test
-    void restTemplateBeanNotNull() {
+    void restTemplateBean_present() {
         AppConfig cfg = new AppConfig();
         assertNotNull(cfg.restTemplate());
     }

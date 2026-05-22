@@ -147,6 +147,8 @@ public class OrderServiceImpl implements OrderService {
         order.setSellerDisplayName(dto.getSellerDisplayName());
         order.setTotalAmount(dto.getTotalAmount());
 
+        order.setStatus(OrderStatus.CREATED);
+
         orderRepository.save(order);
 
         // persist idempotency key mapping after order creation
@@ -200,9 +202,9 @@ public class OrderServiceImpl implements OrderService {
                     "Hanya penjual yang dapat mengupdate informasi pengiriman");
         }
 
-        if (order.getStatus() != OrderStatus.PACKAGED) {
+        if (order.getStatus() != OrderStatus.CREATED) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Pesanan harus dalam status PACKAGED untuk dapat mengupdate pengiriman");
+                    "Pesanan harus dalam status CREATED untuk dapat mengupdate pengiriman");
         }
 
         // update shipping info
