@@ -93,4 +93,62 @@ public class AuctionSettledConsumerTest {
         consumer.consumeAuctionSettled(badJson);
         verifyNoInteractions(orderService);
     }
+
+    @Test
+    void consumeAuctionSettled_withoutWinners_doesNotCreateOrder() {
+        UUID eventId = UUID.randomUUID();
+        UUID auctionId = UUID.randomUUID();
+        String json = String.format(
+            "{\"eventId\":\"%s\",\"auctionId\":\"%s\",\"auctionType\":\"normal\",\"winners\":[],\"occurredAt\":null}",
+            eventId, auctionId
+        );
+
+        consumer.consumeAuctionSettled(json);
+
+        verifyNoInteractions(orderService);
+    }
+
+    @Test
+    void consumeAuctionSettled_nullImagesAndBlankAddress_UsesFallbackValues() {
+        UUID eventId = UUID.randomUUID();
+        UUID auctionId = UUID.randomUUID();
+        UUID sellerId = UUID.randomUUID();
+        UUID winnerId = UUID.randomUUID();
+        String json = String.format(
+            "{\"eventId\":\"%s\",\"auctionId\":\"%s\",\"auctionType\":\"normal\",\"winners\":[{\"userId\":\"%s\",\"amount\":500}],\"occurredAt\":null}",
+            eventId, auctionId, winnerId
+        );
+
+        ListingDetailResponse listing = new ListingDetailResponse();
+        listing.setId(auctionId);
+        listing.setSellerId(sellerId);
+        listing.setTitle("Item title");
+        listing.setImages(null);
+
+        InternalUserResponseDTO buyer = new InternalUserResponseDTO();
+        buyer.setId(winnerId);
+        buyer.setDisplayName("Buyer Name");
+        buyer.setShippingStreet(null);
+        buyer.setShippingCity(null);
+        buyer.setShippingProvince(null);
+        buyer.setShippingPostalCode(null);
+
+        InternalUserResponseDTO seller = new InternalUserResponseDTO();
+        seller.setId(sellerId);
+        seller.setDisplayName("Seller Name");
+
+        when(catalogClient.getListingById(auctionId)).thenReturn(listing);
+        when(userClient.getUserById(winnerId)).thenReturn(buyer);
+        when(userClient.getUserById(sellerId)).thenReturn(seller);
+
+        consumer.consumeAuctionSettled(json);
+
+        ArgumentCaptor<CreateOrder> captor = ArgumentCaptor.forClass(CreateOrder.class);
+        verify(orderService).createOrderFromEvent(captor.capture(), eq(eventId.toString()));
+        assertNull(captor.getValue().getListingImageUrl());
+        assertEquals("", captor.getValue().getShippingStreet());
+        assertEquals("", captor.getValue().getShippingCity());
+        assertEquals("", captor.getValue().getShippingProvince());
+        assertEquals("", captor.getValue().getShippingPostalCode());
+    }
 }

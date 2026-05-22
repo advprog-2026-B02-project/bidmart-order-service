@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -67,20 +69,29 @@ public class OutboxDispatcher {
             event.setStatus(OutboxStatus.SENT);
             event.setDispatchedAt(LocalDateTime.now());
             event.setLastError(null);
-        } catch (Exception e) {
-            int nextAttempts = event.getAttempts() + 1;
-            event.setAttempts(nextAttempts);
-            event.setLastError(trimMessage(e.getMessage()));
-            if (nextAttempts >= maxAttempts) {
-                event.setStatus(OutboxStatus.FAILED);
-            } else {
-                event.setStatus(OutboxStatus.PENDING);
-            }
-            log.warn("Failed to dispatch outbox event {} on topic {} (attempt {}/{}): {}",
-                    event.getId(), topic, nextAttempts, maxAttempts, e.getMessage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            markDispatchFailure(event, topic, e);
+        } catch (ExecutionException | TimeoutException e) {
+            markDispatchFailure(event, topic, e);
+        } catch (RuntimeException e) {
+            markDispatchFailure(event, topic, e);
         }
 
         outboxRepository.save(event);
+    }
+
+    private void markDispatchFailure(OutboxEvent event, String topic, Exception e) {
+        int nextAttempts = event.getAttempts() + 1;
+        event.setAttempts(nextAttempts);
+        event.setLastError(trimMessage(e.getMessage()));
+        if (nextAttempts >= maxAttempts) {
+            event.setStatus(OutboxStatus.FAILED);
+        } else {
+            event.setStatus(OutboxStatus.PENDING);
+        }
+        log.warn("Failed to dispatch outbox event {} on topic {} (attempt {}/{}): {}",
+                event.getId(), topic, nextAttempts, maxAttempts, e.getMessage());
     }
 
     private byte[] safeBytes(String value) {

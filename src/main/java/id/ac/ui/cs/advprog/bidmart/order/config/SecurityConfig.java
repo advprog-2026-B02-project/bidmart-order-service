@@ -35,7 +35,13 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .cors(Customizer.withDefaults())
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf.ignoringRequestMatchers(
+                        "/health",
+                        "/internal/**",
+                        "/api/v1/orders/**",
+                        "/admin/**",
+                        "/api/admin/**"
+                ))
                 .httpBasic(b -> b.disable())
                 .formLogin(f -> f.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

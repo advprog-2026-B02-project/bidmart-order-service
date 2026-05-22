@@ -226,10 +226,12 @@ public class OrderServiceImpl implements OrderService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Kurir dan nomor resi wajib diisi");
         }
+        String courier = request.getCourier().trim();
+        String trackingNumber = request.getTrackingNumber().trim();
 
         // update shipping info
-        order.setCourier(request.getCourier().trim());
-        order.setTrackingNumber(request.getTrackingNumber().trim());
+        order.setCourier(courier);
+        order.setTrackingNumber(trackingNumber);
         order.setShippedAt(LocalDateTime.now());
         order.setStatus(OrderStatus.SHIPPED);
         orderRepository.save(order);
@@ -243,8 +245,8 @@ public class OrderServiceImpl implements OrderService {
                 .data(Map.of(
                         "orderId", order.getId().toString(),
                         "listingTitle", order.getListingTitle(),
-                        "courier", request.getCourier() != null ? request.getCourier() : "",
-                        "trackingNumber", request.getTrackingNumber() != null ? request.getTrackingNumber() : ""
+                        "courier", courier,
+                        "trackingNumber", trackingNumber
                 ))
                 .build());
     }

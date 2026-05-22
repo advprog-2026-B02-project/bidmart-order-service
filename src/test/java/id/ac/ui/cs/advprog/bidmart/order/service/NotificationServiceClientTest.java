@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.bidmart.order.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.bidmart.order.dto.SaveNotification;
 import id.ac.ui.cs.advprog.bidmart.order.model.NotificationType;
@@ -18,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -95,5 +97,28 @@ class NotificationServiceClientTest {
 
         RuntimeException exception = assertThrows(RuntimeException.class, () -> client.saveNotification(notification));
         assertEquals("boom", exception.getMessage());
+    }
+
+    @Test
+    void saveNotification_WhenSerializationFails_ThrowsIllegalStateException() throws Exception {
+        ObjectMapper failingMapper = mock(ObjectMapper.class);
+        NotificationServiceClient failingClient = new NotificationServiceClient(outboxRepository, failingMapper);
+
+        when(failingMapper.writeValueAsString(any(SaveNotification.class)))
+                .thenThrow(new JsonProcessingException("bad payload") {
+                });
+
+        SaveNotification notification = SaveNotification.builder()
+                .userId(UUID.randomUUID())
+                .type(NotificationType.ORDER_CREATED)
+                .title("t")
+                .message("m")
+                .build();
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> failingClient.saveNotification(notification));
+
+        assertEquals("Gagal menyimpan notifikasi ke outbox", exception.getMessage());
+        verify(outboxRepository, never()).save(any(OutboxEvent.class));
     }
 }

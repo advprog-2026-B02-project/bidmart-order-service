@@ -39,4 +39,21 @@ class InternalOrderControllerTest {
         assertEquals("CREATED", res.getBody().get("status"));
         assertNotNull(res.getBody().get("createdAt"));
     }
+
+    @Test
+    void createOrderFromEvent_UsesOrderCreatedAtWhenServiceReturnsOrder() {
+        CreateOrder req = CreateOrder.builder()
+                .auctionId(UUID.randomUUID())
+                .listingTitle("Title")
+                .build();
+        id.ac.ui.cs.advprog.bidmart.order.model.Order order =
+                new id.ac.ui.cs.advprog.bidmart.order.model.Order();
+        order.setCreatedAt(java.time.LocalDateTime.of(2026, 1, 2, 3, 4));
+
+        org.mockito.Mockito.when(orderService.createOrderFromEvent(req, "idemp")).thenReturn(order);
+
+        ResponseEntity<Map<String, Object>> res = controller.createOrderFromEvent("token", "idemp", req);
+
+        assertEquals("2026-01-02T03:04", res.getBody().get("createdAt"));
+    }
 }

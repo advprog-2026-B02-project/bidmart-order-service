@@ -2,6 +2,7 @@ plugins {
     java
     id("org.springframework.boot") version "3.4.2"
     id("io.spring.dependency-management") version "1.1.7"
+    id("org.sonarqube") version "7.3.0.8198"
     jacoco
     checkstyle
 }
@@ -26,9 +27,20 @@ repositories {
     mavenCentral()
 }
 
+dependencyLocking {
+    lockAllConfigurations()
+}
+
 dependencies {
     implementation(platform("org.springframework.cloud:spring-cloud-dependencies:2024.0.0"))
     implementation("org.springframework.cloud:spring-cloud-starter-openfeign")
+
+    constraints {
+        implementation("org.bouncycastle:bcprov-jdk18on:1.84") {
+            because("Older Spring Cloud transitive versions are affected by CVE-2026-0636")
+        }
+    }
+
     // Core Web & Database
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
@@ -87,5 +99,14 @@ tasks.jacocoTestReport {
         xml.required.set(true)
         csv.required.set(false)
         html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco"))
+    }
+}
+
+sonar {
+    properties {
+        property("sonar.projectKey", "advprog-2026-B02-project_bidmart-order-service")
+        property("sonar.organization", "advprog-2026-b02-project")
+        property("sonar.host.url", "https://sonarcloud.io")
+        property("sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml")
     }
 }

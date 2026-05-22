@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.bidmart.order.controller;
 
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderListResponse;
 import id.ac.ui.cs.advprog.bidmart.order.dto.OrderResponse;
+import id.ac.ui.cs.advprog.bidmart.order.dto.DisputeRequest;
 import id.ac.ui.cs.advprog.bidmart.order.dto.UpdateShippingRequest;
 import id.ac.ui.cs.advprog.bidmart.order.service.OrderService;
 import org.junit.jupiter.api.Test;
@@ -80,5 +81,17 @@ class OrderControllerTest {
 
         assertEquals(200, res.getStatusCode().value());
         verify(orderService).confirmReceipt(orderId, userId);
+    }
+
+    @Test
+    void createDispute() {
+        UUID orderId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        DisputeRequest request = DisputeRequest.builder().reason("Damaged").build();
+
+        ResponseEntity<Void> res = orderController.createDispute(orderId, userId, request);
+
+        assertEquals(200, res.getStatusCode().value());
+        verify(orderService).createDispute(orderId, userId, request);
     }
 }

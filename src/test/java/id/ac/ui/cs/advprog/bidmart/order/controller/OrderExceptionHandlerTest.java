@@ -22,6 +22,16 @@ class OrderExceptionHandlerTest {
     }
 
     @Test
+    void handleResponseStatusException_UsesExceptionMessageWhenReasonNull() {
+        ResponseStatusException ex = new ResponseStatusException(HttpStatus.BAD_REQUEST);
+
+        ResponseEntity<Map<String, Object>> res = handler.handleResponseStatusException(ex);
+
+        assertEquals(400, res.getStatusCode().value());
+        assertEquals(ex.getMessage(), res.getBody().get("message"));
+    }
+
+    @Test
     void handleGenericException() {
         ResponseEntity<Map<String, Object>> res = handler.handleGenericException(new Exception("error"));
         assertEquals(500, res.getStatusCode().value());

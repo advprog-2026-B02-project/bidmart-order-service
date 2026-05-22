@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class OrderModelTest {
 
@@ -50,5 +51,27 @@ class OrderModelTest {
 
         order.prePersist();
         order.preUpdate();
+    }
+
+    @Test
+    void prePersist_FillsMissingDefaults() {
+        Order order = new Order();
+
+        order.prePersist();
+
+        assertEquals(OrderStatus.CREATED, order.getStatus());
+        assertNotNull(order.getCreatedAt());
+        assertNotNull(order.getUpdatedAt());
+    }
+
+    @Test
+    void prePersist_KeepsExistingUpdatedAt() {
+        Order order = new Order();
+        LocalDateTime updatedAt = LocalDateTime.of(2026, 1, 1, 1, 1);
+        order.setUpdatedAt(updatedAt);
+
+        order.prePersist();
+
+        assertEquals(updatedAt, order.getUpdatedAt());
     }
 }
