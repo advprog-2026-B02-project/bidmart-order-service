@@ -11,7 +11,7 @@ Dokumen ini merangkum kontrak API Order Service berdasarkan source code yang ada
 | Buyer / Pembeli | Melihat order milik sendiri, melihat detail order, konfirmasi penerimaan, membuat sengketa | `/api/v1/orders`, `/api/v1/orders/{orderId}`, `/api/v1/orders/{orderId}/receive`, `/api/v1/orders/{orderId}/dispute` | `X-User-Id: <UUID>` |
 | Seller / Penjual | Melihat order milik store sendiri, mengisi data pengiriman / resi | `/api/v1/orders`, `/api/v1/orders/{orderId}/ship` | `X-User-Id: <UUID>` |
 | Internal / Sistem | Membuat order dari event eksternal (contoh: auction menang) | `/internal/v1/orders` | `X-Service-Token: <secret>` dan `Idempotency-Key: <string>` |
-| Admin | Menyelesaikan sengketa | `/admin/v1/orders/{orderId}/dispute/resolve` | `Authorization: Bearer <JWT>` dengan role `ADMIN` |
+| Admin | Menyelesaikan sengketa, melihat list order (filter by status) | `/admin/v1/orders`, `/admin/v1/orders/{orderId}/dispute/resolve` | `Authorization: Bearer <JWT>` dengan role `ADMIN` |
 
 ### Catatan autentikasi
 
@@ -27,7 +27,6 @@ Dokumen ini merangkum kontrak API Order Service berdasarkan source code yang ada
 Enum status order saat ini adalah:
 
 - `CREATED`
-- `PACKAGED`
 - `SHIPPED`
 - `COMPLETED`
 - `DISPUTED`
@@ -40,8 +39,7 @@ Tidak ada status `PENDING_PAYMENT` atau `PAID` pada source code ini. Jadi lifecy
 ```mermaid
 stateDiagram-v2
     [*] --> CREATED: internal create order
-    CREATED --> PACKAGED: di-upstream / proses lain di luar controller ini
-    PACKAGED --> SHIPPED: seller update shipping
+  CREATED --> SHIPPED: seller update shipping
     SHIPPED --> COMPLETED: buyer confirm receipt
     SHIPPED --> DISPUTED: buyer create dispute
     DISPUTED --> RESOLVED: admin resolve dispute
@@ -54,25 +52,20 @@ stateDiagram-v2
    - Di-set otomatis pada `@PrePersist` jika status belum diisi.
    - Dibuat melalui endpoint internal `/internal/v1/orders`.
 
-2. `PACKAGED`
-   - Status ini dibutuhkan sebagai prasyarat sebelum seller dapat mengisi data pengiriman.
-   - Pada source code ini tidak ada endpoint yang mengubah status ke `PACKAGED`.
-   - Artinya transisi ke `PACKAGED` diasumsikan datang dari proses upstream atau update langsung di lapisan lain.
-
-3. `SHIPPED`
+2. `SHIPPED`
    - Di-set oleh seller melalui `PUT /api/v1/orders/{orderId}/ship`.
    - Syarat sebelum update:
      - caller harus seller order tersebut
-     - order harus berada pada status `PACKAGED`
+    - order harus berada pada status `CREATED`
    - Saat sukses, service menyimpan `courier`, `trackingNumber`, dan `shippedAt`.
 
-4. `COMPLETED`
+3. `COMPLETED`
    - Di-set oleh buyer melalui `PUT /api/v1/orders/{orderId}/receive`.
    - Syarat sebelum update:
      - caller harus buyer order tersebut
      - order harus berada pada status `SHIPPED`
 
-5. `DISPUTED`
+4. `DISPUTED`
    - Di-set oleh buyer melalui `POST /api/v1/orders/{orderId}/dispute`.
    - Syarat sebelum update:
      - caller harus buyer order tersebut
@@ -83,7 +76,7 @@ stateDiagram-v2
      - `evidenceImages`
      - `disputedAt`
 
-6. `RESOLVED`
+5. `RESOLVED`
    - Di-set oleh admin melalui `PUT /admin/v1/orders/{orderId}/dispute/resolve`.
    - Syarat sebelum update:
      - order harus berada pada status `DISPUTED`
@@ -390,7 +383,7 @@ Dipakai oleh `PUT /admin/v1/orders/{orderId}/dispute/resolve`.
 - Auth: `X-User-Id: <UUID>`
 - Query params:
   - `role=BUYER` or omit; jika omit, service default akan memperlakukan sebagai buyer kecuali role seller dikirim
-  - `status` optional, misalnya `CREATED`, `SHIPPED`, `COMPLETED`, `DISPUTED`, `RESOLVED`, `PACKAGED`
+  - `status` optional, misalnya `CREATED`, `SHIPPED`, `COMPLETED`, `DISPUTED`, `RESOLVED`
   - `page` default `0`
   - `size` default `20`
 
@@ -544,7 +537,7 @@ No response body.
 Example request:
 
 ```http
-GET /api/v1/orders?role=SELLER&status=PACKAGED&page=0&size=20 HTTP/1.1
+GET /api/v1/orders?role=SELLER&status=CREATED&page=0&size=20 HTTP/1.1
 X-User-Id: 7df9a8ef-2f19-4f6c-bdbe-43eb6d8a2a9d
 ```
 
@@ -566,7 +559,7 @@ Example response:
         "id": "7df9a8ef-2f19-4f6c-bdbe-43eb6d8a2a9d",
         "displayName": "Toko Komputer A"
       },
-      "status": "PACKAGED",
+      "status": "CREATED",
       "createdAt": "2026-05-21T12:34:56.123"
     }
   ],
@@ -605,7 +598,7 @@ HTTP/1.1 200 OK
 
 No response body.
 
-Catatan: service akan menolak request jika order belum `PACKAGED` atau jika `X-User-Id` bukan seller order tersebut.
+Catatan: service akan menolak request jika order belum `CREATED` atau jika `X-User-Id` bukan seller order tersebut.
 
 ### 4.3 Internal Endpoints
 
@@ -662,7 +655,50 @@ Catatan:
 
 ### 4.4 Admin Endpoints
 
-#### 4.4.1 Resolve Dispute
+#### 4.4.1 List Orders (Admin)
+
+- Method: `GET`
+- Path: `/admin/v1/orders`
+- Auth: `Authorization: Bearer <JWT>` dengan role `ADMIN`
+
+Query params:
+- `status` optional — filter by `OrderStatus` (e.g. `DISPUTED`). If invalid, returns `400 Bad Request`.
+- `page` optional — default `0`
+- `size` optional — default `20`
+
+Response: `OrderListResponse` (same shape as `GET /api/v1/orders`).
+
+Example request:
+
+```http
+GET /admin/v1/orders?status=DISPUTED&page=0&size=20 HTTP/1.1
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+```
+
+Example response:
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "content": [ /* OrderSummary items */ ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 5,
+  "totalPages": 1
+}
+```
+
+Errors:
+- `400 Bad Request` when `status` is not a valid `OrderStatus`.
+- `403 Forbidden` when caller token does not contain `ADMIN` role.
+
+Implementation notes:
+- Implemented in `AdminOrderController#getOrders(...)` and `OrderService.getOrdersAdmin(...)` in this codebase. It supports paging and optional status filtering.
+- Tests added: `src/test/java/id/ac/ui/cs/advprog/bidmart/order/controller/AdminOrderControllerGetOrdersTest.java` (integration-style `MockMvc` tests for admin access and authorization).
+
+#### 4.4.2 Resolve Dispute
 
 - Method: `PUT`
 - Path: `/admin/v1/orders/{orderId}/dispute/resolve`
@@ -697,7 +733,7 @@ No response body.
 | --- | --- | --- |
 | 400 Bad Request | Status order tidak valid di query `status` | `parseStatus()` |
 | 400 Bad Request | Buyer mencoba konfirmasi penerimaan saat order belum `SHIPPED` | `confirmReceipt()` |
-| 400 Bad Request | Seller mencoba ship saat order belum `PACKAGED` | `updateShipping()` |
+| 400 Bad Request | Seller mencoba ship saat order belum `CREATED` | `updateShipping()` |
 | 400 Bad Request | Buyer membuat dispute saat order belum `SHIPPED` | `createDispute()` |
 | 400 Bad Request | Admin resolve dispute saat order belum `DISPUTED` | `resolveDispute()` |
 | 401 Unauthorized | `X-Service-Token` missing / salah pada internal endpoint | `ServiceTokenFilter` |

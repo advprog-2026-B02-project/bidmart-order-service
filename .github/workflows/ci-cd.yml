@@ -25,6 +25,7 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
 
+      - run: sed -i -e 's/\r$//' gradlew
       - run: chmod +x gradlew
       - run: ./gradlew test jacocoTestReport
         env:
