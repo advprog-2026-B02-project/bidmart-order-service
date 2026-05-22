@@ -217,7 +217,7 @@ public class OrderServiceImpl implements OrderService {
                     "Status pengiriman tidak valid: " + request.getStatus());
         }
 
-        if (order.getStatus() != OrderStatus.PACKAGED) {
+        if (order.getStatus() != OrderStatus.CREATED && order.getStatus() != OrderStatus.PACKAGED) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Pesanan harus dalam status CREATED untuk dapat mengupdate pengiriman");
         }
